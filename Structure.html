@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Account</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: url('struc.png') no-repeat center center fixed;
+    background-size: cover;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  .wrapper {
+    width: 100%;
+    max-width: 350px;
+    padding: 20px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    animation: fadeIn 0.8s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .profile-pic {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #ddd;
+    margin: 0 auto 10px;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-pic::after {
+    content: "+";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #fff;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border: 2px solid #ccc;
+    font-weight: bold;
+    color: #555;
+  }
+  input[type="file"] { display: none; }
+  input[type="text"], input[type="password"] {
+    width: 80%;
+    padding: 15px;
+    margin-top: 10px;
+    font-size: 16px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    text-align: center;
+  }
+  .gender-select { margin: 15px 0; }
+  .note {
+    font-size: 12px;
+    color: #888;
+    margin: 10px 0;
+  }
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .btn-primary { background-color: LightSteelBlue; color: white; }
+  .btn-primary:hover:not(:disabled) { background-color: SteelBlue; }
+  .btn-secondary { background-color: #ccc; color: #333; }
+  .btn-secondary:hover:not(:disabled) { background-color: #bbb; }
+  .btn-primary:disabled, .btn-secondary:disabled { background-color: #aaa; cursor: not-allowed; }
+  .alert-box {
+    background-color: #f44336;
+    color: white;
+    padding: 10px;
+    border-radius: 20px;
+    margin-top: 10px;
+    display: none;
+  }
+  .switch-link {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #333;
+  }
+  .switch-link span {
+    color: SteelBlue;
+    cursor: pointer;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+  <div class="wrapper" id="registerForm">
+    <div class="profile-pic" id="profilePreview" onclick="document.getElementById('imageInput').click()"></div>
+    <input type="file" id="imageInput" accept="image/*" />
+    <input id="nickname" type="text" placeholder="Enter a username" maxlength="20"/>
+    <input id="password" type="password" placeholder="Enter a password" maxlength="20"/>
+    <div class="gender-select">
+      <label><input type="radio" name="gender" value="male"> Male</label>
+      <label><input type="radio" name="gender" value="female"> Female</label>
+    </div>
+    <div class="note">Note: We do not collect personal data. This is for app customization only.</div>
+    <button id="saveBtn" class="btn-primary" onclick="handleContinue()">Save and continue</button>
+    <button id="guestBtn" class="btn-secondary" onclick="guestContinue()">Guest</button>
+    <div id="customAlert" class="alert-box"></div>
+    <div class="switch-link">Already have an account? <span onclick="toggleForms()">Log in</span></div>
+  </div>
+
+  <div class="wrapper" id="loginForm" style="display:none;">
+    <h3>Log in</h3>
+    <input id="loginUsername" type="text" placeholder="Enter your username"/>
+    <input id="loginPassword" type="password" placeholder="Enter your password"/>
+    <button class="btn-primary" onclick="loginUser()">Log in</button>
+    <div id="loginAlert" class="alert-box"></div>
+    <div class="switch-link">Don’t have an account? <span onclick="toggleForms()">Register</span></div>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyACbKYi7hpqNCiFysWLyt6-eKpsSDdi4W8",
+  authDomain: "speakable-7f5cf.firebaseapp.com",
+  databaseURL: "https://speakable-7f5cf-default-rtdb.firebaseio.com",
+  projectId: "speakable-7f5cf",
+  storageBucket: "speakable-7f5cf.appspot.com",
+  messagingSenderId: "919521788374",
+  appId: "1:919521788374:web:66ddbcea40541e3f052477",
+  measurementId: "G-R94B6X3C3B"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+const nicknameInput = document.getElementById("nickname");
+const passwordInput = document.getElementById("password");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const profilePreview = document.getElementById("profilePreview");
+const imageInput = document.getElementById("imageInput");
+
+function sanitizeKey(str) {
+  return String(str).replace(/[.#$\/\[\]]/g, "_");
+}
+
+function showAlert(box, message) {
+  box.textContent = message;
+  box.style.display = "block";
+  setTimeout(() => (box.style.display = "none"), 3000);
+}
+
+// Preview profile picture
+imageInput.addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      profilePreview.style.backgroundImage = `url('${e.target.result}')`;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// REGISTER FUNCTION
+async function handleContinue() {
+  const username = nicknameInput.value.trim();
+  const password = passwordInput.value.trim();
+  const gender = document.querySelector("input[name='gender']:checked")?.value;
+  const alertBox = document.getElementById("customAlert");
+
+  if (!username || !password || !gender) {
+    showAlert(alertBox, "Fill in all fields.");
+    return;
+  }
+
+  try {
+    const userRef = ref(db, `users/${sanitizeKey(username)}`);
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+      showAlert(alertBox, "Username already taken.");
+      return;
+    }
+
+    let profileUrl = "";
+    const file = imageInput.files[0];
+    if (file) {
+      const storageRef = sRef(storage, `profiles/${username}_${Date.now()}`);
+      await uploadBytes(storageRef, file);
+      profileUrl = await getDownloadURL(storageRef);
+    }
+
+    await set(userRef, {
+      username,
+      password,
+      gender,
+      profileUrl
+    });
+
+    // Save active user locally
+    localStorage.setItem("activeUser", username);
+    localStorage.setItem("activeUserData", JSON.stringify({ username, password, gender, profileUrl }));
+
+    // Fade-out effect then go to home
+    document.body.style.transition = "opacity 0.5s ease";
+    document.body.style.opacity = "0";
+    setTimeout(() => {
+      window.location.href = "home.html";
+    }, 500);
+
+  } catch (error) {
+    console.error(error);
+    showAlert(alertBox, "Error creating account.");
+  }
+}
+
+// LOGIN FUNCTION
+async function loginUser() {
+  const username = loginUsername.value.trim();
+  const password = loginPassword.value.trim();
+  const alertBox = document.getElementById("loginAlert");
+
+  if (!username || !password) {
+    showAlert(alertBox, "Fill in all fields.");
+    return;
+  }
+
+  try {
+    const snap = await get(ref(db, `users/${sanitizeKey(username)}`));
+    if (!snap.exists()) {
+      showAlert(alertBox, "User not found!");
+      return;
+    }
+    const data = snap.val();
+    if (data.password !== password) {
+      showAlert(alertBox, "Wrong password!");
+      return;
+    }
+
+    localStorage.setItem("activeUser", data.username);
+    localStorage.setItem("activeUserData", JSON.stringify(data));
+
+    document.body.style.transition = "opacity 0.5s ease";
+    document.body.style.opacity = "0";
+    setTimeout(() => {
+      window.location.href = "home.html";
+    }, 500);
+
+  } catch (err) {
+    console.error(err);
+    showAlert(alertBox, "Error logging in.");
+  }
+}
+
+function toggleForms() {
+  const reg = document.getElementById("registerForm");
+  const log = document.getElementById("loginForm");
+  if (reg.style.display === "none") {
+    reg.style.display = "block";
+    log.style.display = "none";
+  } else {
+    reg.style.display = "none";
+    log.style.display = "block";
+  }
+}
+
+window.toggleForms = toggleForms;
+window.loginUser = loginUser;
+window.handleContinue = handleContinue;
+</script>
+</body>
+</html>

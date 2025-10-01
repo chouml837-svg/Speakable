@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Profile</title>
+
+  <style>
+    * {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      background: #d7b899;
+    }
+    .container {
+      display: none;
+      padding: 20px;
+    }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .back-btn {
+      background: #8b5e34;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .back-btn:hover {
+      background: #734b2a;
+    }
+
+    .profile-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 20px;
+      opacity: 0; transform: translateY(-20px);
+      transition: 0.4s ease;
+    }
+    .profile-header.show {
+      opacity: 1; transform: translateY(0);
+    }
+    .profile-left {
+      display: flex; align-items: center; gap: 15px;
+    }
+    .avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      background-color: #ddd;
+      cursor: pointer;
+      border: 3px solid #8b5e34;
+    }
+    .profile-info h2 { font-size: 20px; }
+    .profile-info p { font-size: 14px; color: #555; }
+
+    .edit-btn {
+      padding: 6px 12px;
+      background: #8b5e34;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    .edit-btn:hover {
+      background: #734b2a;
+    }
+
+    .stats {
+      display: flex; justify-content: space-between;
+      margin: 20px 0;
+    }
+    .stat {
+      flex: 1; text-align: center;
+      padding: 15px; background: white;
+      border-radius: 15px; margin: 0 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    h3 {
+      margin-top: 25px;
+      color: #333;
+    }
+
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px; margin-top: 20px;
+    }
+    .book-card {
+      background: white; padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .edit-form {
+      display: none;
+      margin-top: 15px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      text-align: left;
+      animation: slideDown 0.4s ease;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .edit-form label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+    .edit-form input, .edit-form select {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .save-btn {
+      width: 100%;
+      padding: 12px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .save-btn:hover {
+      background: #1f7a34;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="profileContainer">
+
+    <div class="top-bar">
+      <button class="back-btn" onclick="window.location.href='home.html'">← Back</button>
+    </div>
+
+    <div class="profile-header" id="profileHeader">
+      <div class="profile-left">
+        <div id="avatar" class="avatar"></div>
+        <div class="profile-info">
+          <h2 id="username">Guest</h2>
+          <p id="userDetails">Gender: Unknown</p>
+        </div>
+      </div>
+      <button class="edit-btn" id="editProfileBtn">Edit Profile</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><strong id="booksRead">0</strong><br>Books Read</div>
+      <div class="stat"><strong id="readingTime">0</strong><br>Reading Time</div>
+      <div class="stat"><strong id="score">0</strong><br>Score</div>
+    </div>
+
+    <h3>My Books</h3>
+    <div class="book-grid" id="bookGrid"></div>
+
+    <div class="edit-form" id="editForm">
+      <label for="editName">Name</label>
+      <input type="text" id="editName" placeholder="Enter name"/>
+
+      <label for="editGender">Gender</label>
+      <select id="editGender">
+        <option value="Unknown">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+      </select>
+
+      <label for="editAvatar">Profile Picture</label>
+      <input type="file" id="editAvatar" accept="image/*"/>
+
+      <button class="save-btn" id="saveProfileBtn">Save</button>
+    </div>
+  </div>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+  import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyACbKYi7hpqNCiFysWLyt6-eKpsSDdi4W8",
+    authDomain: "speakable-7f5cf.firebaseapp.com",
+    databaseURL: "https://speakable-7f5cf-default-rtdb.firebaseio.com",
+    projectId: "speakable-7f5cf",
+    storageBucket: "speakable-7f5cf.appspot.com",
+    messagingSenderId: "919521788374",
+    appId: "1:919521788374:web:66ddbcea40541e3f052477"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const profileContainer = document.getElementById("profileContainer");
+  const profileHeader = document.getElementById("profileHeader");
+  const avatarEl = document.getElementById("avatar");
+  const usernameEl = document.getElementById("username");
+  const userDetailsEl = document.getElementById("userDetails");
+  const booksReadEl = document.getElementById("booksRead");
+  const readingTimeEl = document.getElementById("readingTime");
+  const scoreEl = document.getElementById("score");
+  const bookGrid = document.getElementById("bookGrid");
+  const editForm = document.getElementById("editForm");
+  const editProfileBtn = document.getElementById("editProfileBtn");
+  const saveProfileBtn = document.getElementById("saveProfileBtn");
+  const editNameInput = document.getElementById("editName");
+  const editGenderInput = document.getElementById("editGender");
+  const editAvatarInput = document.getElementById("editAvatar");
+
+  let currentUser = null;
+  let currentUserData = null;
+
+  async function loadUser() {
+    currentUser = localStorage.getItem("activeUser");
+    if (!currentUser) {
+      updateProfile({gender:"Unknown"}, "Guest");
+      return;
+    }
+    const snap = await get(ref(db, "users/" + currentUser));
+    if (snap.exists()) {
+      currentUserData = snap.val();
+      updateProfile(currentUserData, currentUser);
+    } else {
+      updateProfile({gender:"Unknown"}, "Guest");
+    }
+  }
+
+  function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return (
+      (h > 0 ? h + "h " : "") +
+      (m > 0 ? m + "m " : "") +
+      (s > 0 ? s + "s" : (h === 0 && m === 0 ? "0s" : ""))
+    ).trim();
+  }
+
+  function updateProfile(user, name) {
+    currentUserData = user;
+    usernameEl.textContent = user.name || name || "Guest";
+    userDetailsEl.textContent = `Gender: ${user.gender || "Unknown"}`;
+    avatarEl.style.backgroundImage = `url('${user.profileImage || "default.png"}')`;
+
+    profileContainer.style.display = "block";
+    setTimeout(() => profileHeader.classList.add("show"), 100);
+
+    const books = user.booksRead || [];
+    booksReadEl.textContent = books.length;
+
+    let totalTime = 0, totalScore = 0;
+    books.forEach(b => {
+      totalTime += b.readingTime || 0;
+      totalScore += b.score || 0;
+    });
+
+    readingTimeEl.textContent = formatTime(totalTime);
+
+    if (books.length > 0) {
+      const avgScore = (totalScore / books.length).toFixed(1);
+      scoreEl.textContent = `${avgScore}/10`;
+    } else {
+      scoreEl.textContent = "No scores yet";
+    }
+
+    if (books.length === 0) {
+      bookGrid.innerHTML = "<p>No books yet.</p>";
+    } else {
+      bookGrid.innerHTML = books.map(b => `<div class="book-card"><p>${b.title}</p><small>Score: ${b.score || 0}/10</small></div>`).join("");
+    }
+  }
+
+  editProfileBtn.addEventListener("click", () => {
+    editNameInput.value = currentUserData.name || currentUser;
+    editGenderInput.value = currentUserData.gender || "Unknown";
+    editForm.style.display = editForm.style.display === "block" ? "none" : "block";
+  });
+
+  saveProfileBtn.addEventListener("click", async () => {
+    if (!currentUser) return;
+
+    let imageUrl = currentUserData.profileImage || "default.png";
+
+    const saveUpdatedUser = async () => {
+      const updatedUser = {
+        name: editNameInput.value || currentUser,
+        gender: editGenderInput.value || "Unknown",
+        profileImage: imageUrl,
+        booksRead: currentUserData.booksRead || []
+      };
+
+      await set(ref(db, "users/" + currentUser), updatedUser);
+      updateProfile(updatedUser, updatedUser.name);
+      editForm.style.display = "none";
+    };
+
+    if (editAvatarInput.files && editAvatarInput.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        imageUrl = e.target.result;
+        saveUpdatedUser();
+      };
+      reader.readAsDataURL(editAvatarInput.files[0]);
+    } else {
+      saveUpdatedUser();
+    }
+  });
+
+  loadUser();
+</script>
+</body>
+</html>
